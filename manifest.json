@@ -1,0 +1,17 @@
+{
+  "name": "音域記録帳",
+  "short_name": "音域記録",
+  "description": "歌手・楽曲の音域を記録する鍵盤ビジュアライザー",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0d0d0f",
+  "theme_color": "#0d0d0f",
+  "lang": "ja",
+  "icons": [
+    { "src": "icon-120.png", "sizes": "120x120", "type": "image/png" },
+    { "src": "icon-152.png", "sizes": "152x152", "type": "image/png" },
+    { "src": "icon-167.png", "sizes": "167x167", "type": "image/png" },
+    { "src": "icon-180.png", "sizes": "180x180", "type": "image/png" }
+  ]
+}
