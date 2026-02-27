@@ -519,6 +519,92 @@
     font-family: 'DM Mono', monospace; letter-spacing: 0.1em;
   }
 
+  /* ── Singer accordion ── */
+  .singer-group { margin-bottom: 12px; }
+
+  .singer-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    user-select: none;
+  }
+  .singer-header:hover { border-color: var(--accent); }
+  .singer-header.open {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    border-color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 5%, var(--surface));
+  }
+
+  .singer-header-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .singer-avatar {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), #a88a50);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 800;
+    color: var(--bg);
+    flex-shrink: 0;
+    font-family: 'Shippori Mincho', serif;
+  }
+  .singer-name-label {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .singer-count {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  .singer-header-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .singer-chevron {
+    color: var(--muted);
+    font-size: 0.75rem;
+    transition: transform 0.25s;
+    font-family: 'DM Mono', monospace;
+  }
+  .singer-header.open .singer-chevron { transform: rotate(180deg); }
+
+  .singer-songs {
+    display: none;
+    flex-direction: column;
+    border: 1px solid var(--accent);
+    border-top: none;
+    border-radius: 0 0 12px 12px;
+    overflow: hidden;
+  }
+  .singer-songs.open { display: flex; }
+
+  /* record-card inside accordion — no border-radius on top */
+  .singer-songs .record-card {
+    border-radius: 0;
+    border: none;
+    border-bottom: 1px solid var(--border);
+    margin: 0;
+    animation: none;
+  }
+  .singer-songs .record-card:last-child { border-bottom: none; }
+  .singer-songs .record-card:hover { background: color-mix(in srgb, var(--accent) 4%, var(--surface)); }
+  .singer-songs .record-card.active { background: color-mix(in srgb, var(--accent) 8%, var(--surface)); }
+
   @media (max-width: 600px) {
     .form-grid, .range-inputs { grid-template-columns: 1fr; }
     .form-card { padding: 22px 18px; }
@@ -987,6 +1073,8 @@ function addRecord() {
     falsettoHigh: getNoteName('falsettoHigh'),
     falsettoLow:  getNoteName('falsettoLow'),
   });
+  // 追加した歌手のグループを自動で開く
+  openSingers.add(singer || '（名前なし）');
   saveRecords();
   renderRecords();
 }
@@ -1235,32 +1323,89 @@ document.getElementById('editModal').addEventListener('click', e => {
   if (e.target === document.getElementById('editModal')) closeEditModal();
 });
 
+// 開いている歌手グループを記憶
+const openSingers = new Set();
+
+function toggleSingerGroup(singerKey) {
+  if (openSingers.has(singerKey)) {
+    openSingers.delete(singerKey);
+  } else {
+    openSingers.add(singerKey);
+  }
+  renderRecords();
+}
+
 function renderRecords() {
   const list = document.getElementById('recordList');
-  if (!records.length) { list.innerHTML = '<div class="empty">まだ記録がありません</div>'; return; }
+  if (!records.length) {
+    list.innerHTML = '<div class="empty">まだ記録がありません</div>';
+    return;
+  }
   list.innerHTML = '';
+
+  // 歌手ごとにグループ化（登場順を保持）
+  const groups = {};
+  const order  = [];
   records.forEach(r => {
-    const fb = falsettoBadge(r);
-    const card = document.createElement('div');
-    card.className = 'record-card';
-    card.id = 'rc-' + r.id;
-    if (activeRecordId === r.id) card.classList.add('active');
-    card.innerHTML = `
-      <div style="cursor:pointer;flex:1" onclick="loadRecordToPiano(${r.id})">
-        <div class="record-name">${r.singer || '—'}</div>
-        <div class="record-song">${r.song || '—'}</div>
-        <div class="record-ranges">
-          <span class="range-badge badge-chest">${chestBadge(r)}</span>
-          ${fb ? `<span class="range-badge badge-falsetto">${fb}</span>` : ''}
+    const key = r.singer || '（名前なし）';
+    if (!groups[key]) { groups[key] = []; order.push(key); }
+    groups[key].push(r);
+  });
+
+  order.forEach(singerKey => {
+    const singerRecords = groups[singerKey];
+    const isOpen = openSingers.has(singerKey);
+    const initial = singerKey.charAt(0);
+
+    const group = document.createElement('div');
+    group.className = 'singer-group';
+
+    // ヘッダー
+    const header = document.createElement('div');
+    header.className = 'singer-header' + (isOpen ? ' open' : '');
+    header.innerHTML = `
+      <div class="singer-header-left">
+        <div class="singer-avatar">${initial}</div>
+        <div>
+          <div class="singer-name-label">${singerKey}</div>
+          <div class="singer-count">${singerRecords.length}曲</div>
         </div>
-        <div class="tap-hint">タップして鍵盤に表示</div>
       </div>
-      <div class="card-actions">
-        <button class="btn-edit"   onclick="event.stopPropagation();openEditModal(${r.id})">編集</button>
-        <button class="btn-delete" onclick="event.stopPropagation();deleteRecord(${r.id})">削除</button>
+      <div class="singer-header-right">
+        <span class="singer-chevron">▼</span>
       </div>
     `;
-    list.appendChild(card);
+    header.addEventListener('click', () => toggleSingerGroup(singerKey));
+
+    // 曲リスト
+    const songs = document.createElement('div');
+    songs.className = 'singer-songs' + (isOpen ? ' open' : '');
+
+    singerRecords.forEach(r => {
+      const fb = falsettoBadge(r);
+      const card = document.createElement('div');
+      card.className = 'record-card' + (activeRecordId === r.id ? ' active' : '');
+      card.id = 'rc-' + r.id;
+      card.innerHTML = `
+        <div style="cursor:pointer;flex:1" onclick="loadRecordToPiano(${r.id})">
+          <div class="record-song" style="margin-bottom:6px">${r.song || '—'}</div>
+          <div class="record-ranges">
+            <span class="range-badge badge-chest">${chestBadge(r)}</span>
+            ${fb ? `<span class="range-badge badge-falsetto">${fb}</span>` : ''}
+          </div>
+          <div class="tap-hint">タップして鍵盤に表示</div>
+        </div>
+        <div class="card-actions">
+          <button class="btn-edit"   onclick="event.stopPropagation();openEditModal(${r.id})">編集</button>
+          <button class="btn-delete" onclick="event.stopPropagation();deleteRecord(${r.id})">削除</button>
+        </div>
+      `;
+      songs.appendChild(card);
+    });
+
+    group.appendChild(header);
+    group.appendChild(songs);
+    list.appendChild(group);
   });
 }
 
