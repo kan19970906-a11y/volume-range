@@ -945,6 +945,37 @@
   .singer-songs .record-card:hover { background: color-mix(in srgb, var(--accent) 4%, var(--surface)); }
   .singer-songs .record-card.active { background: color-mix(in srgb, var(--accent) 8%, var(--surface)); }
 
+  /* ── 曲名行アコーディオン ── */
+  .song-row-group { border-bottom: 1px solid var(--border); }
+  .song-row-group:last-child { border-bottom: none; }
+  .song-row-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 16px;
+    background: color-mix(in srgb, var(--accent) 3%, var(--surface));
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.15s;
+  }
+  .song-row-header:hover { background: color-mix(in srgb, var(--accent) 7%, var(--surface)); }
+  .song-row-badge {
+    font-size: 0.78rem; font-weight: 800;
+    color: var(--accent); width: 28px; text-align: center; flex-shrink: 0;
+  }
+  .song-row-count {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.62rem; color: var(--muted); flex: 1;
+  }
+  .song-row-chevron {
+    font-size: 0.55rem; color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    transition: transform 0.18s;
+  }
+  .song-row-header.open .song-row-chevron { transform: rotate(180deg); }
+  .song-row-body { display: none; }
+  .song-row-body.open { display: block; }
+
   @media (max-width: 600px) {
     .form-grid, .range-inputs { grid-template-columns: 1fr; }
     .form-card { padding: 22px 18px; }
@@ -1586,6 +1617,9 @@ function addRecord() {
   openKanaRows.add(addedRowDef.key);
   openKanaChars.add(addedRowDef.key + ':' + addedCharKey);
   openSingers.add(addedKey);
+  // 曲名の行も自動で開く
+  const songRowDef = KANA_ROWS.find(r => r.test(toHira((song||'').charAt(0)))) || KANA_ROWS[KANA_ROWS.length-1];
+  openSongRows.add(addedKey + ':' + songRowDef.key);
   saveRecords();
   renderRecords();
 }
@@ -1854,10 +1888,11 @@ function getCharKey(rowDef, singer) {
   return rowDef.chars[0] || (singer || '').charAt(0);
 }
 
-// 開いている行・中間文字・歌手グループを記憶
-const openKanaRows = new Set();
-const openKanaChars = new Set(); // "さ行:さ" のような複合キー
-const openSingers  = new Set();
+// 開いている行・中間文字・歌手・曲名行グループを記憶
+const openKanaRows  = new Set();
+const openKanaChars = new Set();
+const openSingers   = new Set();
+const openSongRows  = new Set(); // "singerKey:rowKey" の複合キー
 
 function toggleKanaRow(key) {
   openKanaRows.has(key) ? openKanaRows.delete(key) : openKanaRows.add(key);
@@ -1869,6 +1904,10 @@ function toggleKanaChar(key) {
 }
 function toggleSingerGroup(singerKey) {
   openSingers.has(singerKey) ? openSingers.delete(singerKey) : openSingers.add(singerKey);
+  renderRecords();
+}
+function toggleSongRow(key) {
+  openSongRows.has(key) ? openSongRows.delete(key) : openSongRows.add(key);
   renderRecords();
 }
 
@@ -1986,26 +2025,60 @@ function renderRecords() {
         const songs = document.createElement('div');
         songs.className = 'singer-songs' + (isSingerOpen ? ' open' : '');
 
+        // 曲名を行（あ行・か行…）でグループ化
+        const songRowMap = {}; // rowKey → [record]
         singerRecords.forEach(r => {
-          const fb   = falsettoBadge(r);
-          const card = document.createElement('div');
-          card.className = 'record-card' + (activeRecordId === r.id ? ' active' : '');
-          card.id = 'rc-' + r.id;
-          card.innerHTML = `
-            <div style="cursor:pointer;flex:1" onclick="loadRecordToPiano(${r.id})">
-              <div class="record-song" style="margin-bottom:6px">${r.song || '—'}</div>
-              <div class="record-ranges">
-                <span class="range-badge badge-chest">${chestBadge(r)}</span>
-                ${fb ? `<span class="range-badge badge-falsetto">${fb}</span>` : ''}
-              </div>
-              <div class="tap-hint">タップして鍵盤に表示</div>
-            </div>
-            <div class="card-actions">
-              <button class="btn-edit"   onclick="event.stopPropagation();openEditModal(${r.id})">編集</button>
-              <button class="btn-delete" onclick="event.stopPropagation();deleteRecord(${r.id})">削除</button>
-            </div>
+          const rDef = KANA_ROWS.find(rd => rd.test(toHira((r.song||'').charAt(0)))) || KANA_ROWS[KANA_ROWS.length-1];
+          if (!songRowMap[rDef.key]) songRowMap[rDef.key] = { def: rDef, recs: [] };
+          songRowMap[rDef.key].recs.push(r);
+        });
+
+        KANA_ROWS.forEach(rDef => {
+          const group = songRowMap[rDef.key];
+          if (!group) return;
+          const srKey   = singerKey + ':' + rDef.key;
+          const isOpen  = openSongRows.has(srKey);
+
+          const rowGroup = document.createElement('div');
+          rowGroup.className = 'song-row-group';
+
+          const rowHeader = document.createElement('div');
+          rowHeader.className = 'song-row-header' + (isOpen ? ' open' : '');
+          rowHeader.innerHTML = `
+            <span class="song-row-badge">${rDef.label.charAt(0)}</span>
+            <span class="song-row-count">${rDef.label}　${group.recs.length}曲</span>
+            <span class="song-row-chevron">▼</span>
           `;
-          songs.appendChild(card);
+          rowHeader.addEventListener('click', () => toggleSongRow(srKey));
+
+          const rowBody = document.createElement('div');
+          rowBody.className = 'song-row-body' + (isOpen ? ' open' : '');
+
+          group.recs.forEach(r => {
+            const fb   = falsettoBadge(r);
+            const card = document.createElement('div');
+            card.className = 'record-card' + (activeRecordId === r.id ? ' active' : '');
+            card.id = 'rc-' + r.id;
+            card.innerHTML = `
+              <div style="cursor:pointer;flex:1" onclick="loadRecordToPiano(${r.id})">
+                <div class="record-song" style="margin-bottom:6px">${r.song || '—'}</div>
+                <div class="record-ranges">
+                  <span class="range-badge badge-chest">${chestBadge(r)}</span>
+                  ${fb ? `<span class="range-badge badge-falsetto">${fb}</span>` : ''}
+                </div>
+                <div class="tap-hint">タップして鍵盤に表示</div>
+              </div>
+              <div class="card-actions">
+                <button class="btn-edit"   onclick="event.stopPropagation();openEditModal(${r.id})">編集</button>
+                <button class="btn-delete" onclick="event.stopPropagation();deleteRecord(${r.id})">削除</button>
+              </div>
+            `;
+            rowBody.appendChild(card);
+          });
+
+          rowGroup.appendChild(rowHeader);
+          rowGroup.appendChild(rowBody);
+          songs.appendChild(rowGroup);
         });
 
         group.appendChild(header);
