@@ -1021,8 +1021,12 @@
       </div>
     </div>
     <div class="form-grid">
-      <div class="form-group" style="grid-column:1/-1">
-        <label>曲名の読み <span style="font-size:0.7em;color:var(--muted)">(漢字の曲名のとき、頭文字1文字だけ)</span></label>
+      <div class="form-group">
+        <label>歌手名の読み <span style="font-size:0.7em;color:var(--muted)">(頭文字1文字)</span></label>
+        <input type="text" id="singerReading" placeholder="例：し" maxlength="1" style="font-family:'DM Mono',monospace;font-size:1.1rem;max-width:120px">
+      </div>
+      <div class="form-group">
+        <label>曲名の読み <span style="font-size:0.7em;color:var(--muted)">(頭文字1文字)</span></label>
         <input type="text" id="songReading" placeholder="例：ゆ" maxlength="1" style="font-family:'DM Mono',monospace;font-size:1.1rem;max-width:120px">
       </div>
     </div>
@@ -1182,8 +1186,12 @@
       </div>
     </div>
     <div class="form-grid">
-      <div class="form-group" style="grid-column:1/-1">
-        <label>曲名の読み <span style="font-size:0.7em;color:var(--muted)">(漢字の曲名のとき、頭文字1文字だけ)</span></label>
+      <div class="form-group">
+        <label>歌手名の読み <span style="font-size:0.7em;color:var(--muted)">(頭文字1文字)</span></label>
+        <input type="text" id="editSingerReading" placeholder="例：し" maxlength="1" style="font-family:'DM Mono',monospace;font-size:1.1rem;max-width:120px">
+      </div>
+      <div class="form-group">
+        <label>曲名の読み <span style="font-size:0.7em;color:var(--muted)">(頭文字1文字)</span></label>
         <input type="text" id="editSongReading" placeholder="例：ゆ" maxlength="1" style="font-family:'DM Mono',monospace;font-size:1.1rem;max-width:120px">
       </div>
     </div>
@@ -1602,7 +1610,8 @@ function doImport() {
     if (isDup) { skipped++; return; }
     records.push({
       id: Date.now() + Math.random(),
-      singer:       item.singer       || '',
+      singer:       item.singer        || '',
+      singerReading: item.singerReading || '',
       song:         item.song         || '',
       songReading:  item.songReading  || '',
       chestHigh:    item.chestHigh    || 'mid2A',
@@ -1628,9 +1637,10 @@ let records = JSON.parse(localStorage.getItem('vocalRecords') || '[]');
 function saveRecords() { localStorage.setItem('vocalRecords', JSON.stringify(records)); }
 
 function addRecord() {
-  const singer      = document.getElementById('singerName').value.trim();
-  const song        = document.getElementById('songName').value.trim();
-  const songReading = document.getElementById('songReading').value.trim().charAt(0);
+  const singer        = document.getElementById('singerName').value.trim();
+  const singerReading = document.getElementById('singerReading').value.trim().charAt(0);
+  const song          = document.getElementById('songName').value.trim();
+  const songReading   = document.getElementById('songReading').value.trim().charAt(0);
   if (!singer && !song) { document.getElementById('singerName').focus(); return; }
 
   // 重複チェック
@@ -1649,7 +1659,7 @@ function addRecord() {
   document.getElementById('duplicateMsg').classList.remove('show');
 
   records.unshift({
-    id: Date.now(), singer, song, songReading,
+    id: Date.now(), singer, singerReading, song, songReading,
     chestHigh:    getNoteName('chestHigh'),
     chestLow:     getNoteName('chestLow'),
     falsettoHigh: getNoteName('falsettoHigh'),
@@ -1657,8 +1667,9 @@ function addRecord() {
 
   // 追加した歌手のグループを自動で開く
   const addedKey = singer || '（名前なし）';
-  const addedRowDef = KANA_ROWS.find(r => r.test(toHira(addedKey.charAt(0)))) || KANA_ROWS[KANA_ROWS.length - 1];
-  const addedCharKey = getCharKey(addedRowDef, addedKey);
+  const singerSortKey = singerReading || addedKey;
+  const addedRowDef = KANA_ROWS.find(r => r.test(toHira(singerSortKey.charAt(0)))) || KANA_ROWS[KANA_ROWS.length - 1];
+  const addedCharKey = getCharKey(addedRowDef, singerSortKey);
   openKanaRows.add(addedRowDef.key);
   openKanaChars.add(addedRowDef.key + ':' + addedCharKey);
   openSingers.add(addedKey);
@@ -1668,6 +1679,7 @@ function addRecord() {
   openSongRows.add(addedKey + ':' + songRowDef.key);
 
   // よみがな欄をクリア
+  document.getElementById('singerReading').value = '';
   document.getElementById('songReading').value = '';
 
   saveRecords();
@@ -1701,8 +1713,8 @@ function noteNameToMidi(name) {
   }
   if (!prefix) return null;
   // rest = "A", "B♯", "C♭" など
-  const noteName = rest.replace(/[♯♭]/g, '');
-  const accChar  = rest.includes('♯') ? 's' : rest.includes('♭') ? 'f' : 'n';
+  const noteName = rest.replace(/[♯♭#b]/g, '');
+  const accChar  = (rest.includes('♯') || rest.includes('#')) ? 's' : (rest.includes('♭') || rest.includes('b')) ? 'f' : 'n';
   const note = NOTES.find(n => n.name === noteName);
   if (!note) return null;
   return Math.max(0, Math.min(127, prefix.midi + note.semi + ACC_OFFSET[accChar]));
@@ -1851,9 +1863,10 @@ function openEditModal(id) {
   if (!r) return;
   editingRecordId = id;
 
-  document.getElementById('editSingerName').value  = r.singer      || '';
-  document.getElementById('editSongName').value    = r.song        || '';
-  document.getElementById('editSongReading').value = r.songReading || '';
+  document.getElementById('editSingerName').value    = r.singer        || '';
+  document.getElementById('editSingerReading').value = r.singerReading || '';
+  document.getElementById('editSongName').value      = r.song          || '';
+  document.getElementById('editSongReading').value   = r.songReading   || '';
 
   parseNoteToModal('chestHigh',    r.chestHigh);
   parseNoteToModal('chestLow',     r.chestLow);
@@ -1872,9 +1885,10 @@ function saveEdit() {
   if (idx < 0) return;
   records[idx] = {
     ...records[idx],
-    singer:       document.getElementById('editSingerName').value.trim(),
-    song:         document.getElementById('editSongName').value.trim(),
-    songReading:  document.getElementById('editSongReading').value.trim().charAt(0),
+    singer:         document.getElementById('editSingerName').value.trim(),
+    singerReading:  document.getElementById('editSingerReading').value.trim().charAt(0),
+    song:           document.getElementById('editSongName').value.trim(),
+    songReading:    document.getElementById('editSongReading').value.trim().charAt(0),
     chestHigh:    getEditNoteName('chestHigh'),
     chestLow:     getEditNoteName('chestLow'),
     falsettoHigh: getEditNoteName('falsettoHigh'),
@@ -1978,7 +1992,11 @@ function renderRecords() {
     if (!singerMap[k]) singerMap[k] = [];
     singerMap[k].push(r);
   });
-  const singerKeys = Object.keys(singerMap).sort((a, b) => a.localeCompare(b, 'ja'));
+  const singerKeys = Object.keys(singerMap).sort((a, b) => {
+    const ra = (singerMap[a][0] && singerMap[a][0].singerReading) || a;
+    const rb = (singerMap[b][0] && singerMap[b][0].singerReading) || b;
+    return ra.localeCompare(rb, 'ja');
+  });
   singerKeys.forEach(k => {
     singerMap[k].sort((a, b) => {
       const ka = a.songReading || a.song || '';
@@ -1990,9 +2008,10 @@ function renderRecords() {
   // 行 → 中間文字 → 歌手 の3階層マップ
   const rowMap = {}; // rowKey → { charKey → [singerKey] }
   singerKeys.forEach(singerKey => {
-    const rowDef = KANA_ROWS.find(r => r.test(toHira((singerKey).charAt(0)))) || KANA_ROWS[KANA_ROWS.length - 1];
+    const singerSortFirst = (singerMap[singerKey][0] && singerMap[singerKey][0].singerReading) || singerKey;
+    const rowDef = KANA_ROWS.find(r => r.test(toHira(singerSortFirst.charAt(0)))) || KANA_ROWS[KANA_ROWS.length - 1];
     const rowKey = rowDef.key;
-    const charKey = getCharKey(rowDef, singerKey);
+    const charKey = getCharKey(rowDef, singerSortFirst);
     if (!rowMap[rowKey]) rowMap[rowKey] = {};
     if (!rowMap[rowKey][charKey]) rowMap[rowKey][charKey] = [];
     rowMap[rowKey][charKey].push(singerKey);
