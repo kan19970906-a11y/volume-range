@@ -487,6 +487,94 @@
   }
   .legend-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
 
+  /* ── Import / Export ── */
+  .io-bar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+  .btn-io {
+    flex: 1;
+    min-width: 120px;
+    padding: 9px 14px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+  }
+  .btn-io:hover { border-color: var(--accent); color: var(--accent); }
+  .import-modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    backdrop-filter: blur(4px);
+  }
+  .import-modal-overlay.open { display: flex; }
+  .import-modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px;
+    width: 100%;
+    max-width: 560px;
+    position: relative;
+  }
+  .import-modal::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    border-radius: 16px 16px 0 0;
+  }
+  .import-modal h3 {
+    font-size: 0.95rem; font-weight: 600;
+    letter-spacing: 0.1em; color: var(--accent);
+    margin-bottom: 12px;
+  }
+  .import-modal p {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.72rem; color: var(--muted);
+    margin-bottom: 14px; line-height: 1.6;
+  }
+  #importTextarea {
+    width: 100%;
+    height: 160px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.72rem;
+    padding: 12px;
+    resize: vertical;
+    outline: none;
+    margin-bottom: 12px;
+  }
+  #importTextarea:focus { border-color: var(--accent); }
+  .import-modal-footer { display: flex; gap: 8px; justify-content: flex-end; }
+  .import-result {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.72rem;
+    margin-bottom: 10px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    display: none;
+  }
+  .import-result.ok  { display: block; background: rgba(80,192,120,0.12); border: 1px solid rgba(80,192,120,0.4); color: #60c070; }
+  .import-result.err { display: block; background: rgba(192,80,74,0.12);  border: 1px solid rgba(192,80,74,0.4);  color: #e07070; }
+
   /* ── Records ── */
   .records-section h2 { font-size: 1.2rem; letter-spacing: 0.15em; color: var(--accent); margin-bottom: 20px; }
   .record-list { display: flex; flex-direction: column; gap: 14px; }
@@ -995,11 +1083,29 @@
   <!-- Records -->
   <div class="records-section">
     <h2>記録一覧</h2>
+    <div class="io-bar">
+      <button class="btn-io" onclick="openImportModal()">📥 インポート</button>
+      <button class="btn-io" onclick="exportRecords()">📤 エクスポート</button>
+    </div>
     <div class="record-list" id="recordList">
       <div class="empty">まだ記録がありません</div>
     </div>
   </div>
 
+</div>
+
+<!-- ── Import Modal ── -->
+<div class="import-modal-overlay" id="importModal">
+  <div class="import-modal">
+    <h3>JSONインポート</h3>
+    <p>ClaudeにJSONを出力してもらい、ここに貼り付けてください。<br>重複する曲はスキップされます。</p>
+    <div class="import-result" id="importResult"></div>
+    <textarea id="importTextarea" placeholder='[{"singer":"シド","song":"嘘","chestHigh":"hiC","chestLow":"mid1F♯","falsettoHigh":"hiD"}]'></textarea>
+    <div class="import-modal-footer">
+      <button class="btn-cancel" onclick="closeImportModal()">キャンセル</button>
+      <button class="btn-save" onclick="doImport()">インポートする</button>
+    </div>
+  </div>
 </div>
 
 <!-- ── Edit Modal ── -->
@@ -1379,6 +1485,69 @@ function updatePiano() {
     getNoteMidi('falsettoHigh'),
   );
 }
+
+// ═══ Import / Export ════════════════════════════════
+
+function exportRecords() {
+  const data = JSON.stringify(records, null, 2);
+  const blob = new Blob([data], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url;
+  a.download = '音域記録_' + new Date().toISOString().slice(0,10) + '.json';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function openImportModal() {
+  document.getElementById('importTextarea').value = '';
+  document.getElementById('importResult').className = 'import-result';
+  document.getElementById('importModal').classList.add('open');
+}
+function closeImportModal() {
+  document.getElementById('importModal').classList.remove('open');
+}
+
+function doImport() {
+  const raw = document.getElementById('importTextarea').value.trim();
+  const resultEl = document.getElementById('importResult');
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) throw new Error('配列ではありません');
+  } catch(e) {
+    resultEl.textContent = 'JSONの形式が正しくありません: ' + e.message;
+    resultEl.className = 'import-result err';
+    return;
+  }
+
+  const VALID_FIELDS = ['singer','song','chestHigh','chestLow','falsettoHigh'];
+  let added = 0, skipped = 0;
+  parsed.forEach(item => {
+    if (typeof item !== 'object' || !item.singer || !item.song) { skipped++; return; }
+    const isDup = records.some(r => r.singer === item.singer && r.song === item.song);
+    if (isDup) { skipped++; return; }
+    records.push({
+      id: Date.now() + Math.random(),
+      singer:       item.singer       || '',
+      song:         item.song         || '',
+      chestHigh:    item.chestHigh    || 'mid2A',
+      chestLow:     item.chestLow     || 'なし',
+      falsettoHigh: item.falsettoHigh || 'なし',
+    });
+    added++;
+  });
+
+  saveRecords();
+  renderRecords();
+  resultEl.textContent = `${added}件追加、${skipped}件スキップしました`;
+  resultEl.className = 'import-result ok';
+  setTimeout(() => closeImportModal(), 1800);
+}
+
+document.getElementById('importModal').addEventListener('click', e => {
+  if (e.target === document.getElementById('importModal')) closeImportModal();
+});
 
 // ═══ Records ════════════════════════════════════════
 let records = JSON.parse(localStorage.getItem('vocalRecords') || '[]');
