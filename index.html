@@ -2131,8 +2131,9 @@ function renderRecords() {
 buildSelects();
 buildEditSelects();
 buildPiano();
-// 初期スクロール: mid2E(MIDI 76)が画面中央付近に来るよう設定
-(function() {
+updatePiano();
+// 初期スクロール: mid2E(MIDI 76)が画面中央に来るよう設定
+setTimeout(function() {
   var scroll = document.querySelector('.piano-scroll');
   var wp = window._whitePos;
   if (!scroll || !wp) return;
@@ -2140,8 +2141,7 @@ buildPiano();
   if (wi === undefined) return;
   var center = scroll.clientWidth / 2;
   scroll.scrollLeft = wi * 22 - center + 11;
-})();
-updatePiano();
+}, 50);
 renderRecords();
 
 // ── Service Worker ────────────────────────────────────
