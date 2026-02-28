@@ -1087,7 +1087,6 @@ function buildSelects() {
   FIELD_IDS.forEach(id => {
     const ps = document.getElementById(id + 'Prefix');
     const ns = document.getElementById(id + 'Note');
-    if (!ps || !ns) return;
 
     PREFIXES.forEach((p, i) => {
       const o = document.createElement('option');
@@ -1101,18 +1100,15 @@ function buildSelects() {
       ns.appendChild(o);
     });
 
-    // デフォルト値：例に合わせる
-    // chestHigh → hiC (prefix=4=hi, note=2=C)
-    // chestLow  → mid1F♯ (prefix=2=mid1, note=5=F, acc=♯)
-    // falsettoHigh → hiD (prefix=4=hi, note=3=D)
-    if (id === 'chestHigh')    { ps.value = 4; ns.value = 2; }       // hiC
-    else if (id === 'chestLow'){ ps.value = 2; ns.value = 5; accState['chestLow'] = 's'; } // mid1F♯
-    else if (id === 'falsettoHigh') { ps.value = 4; ns.value = 3; }  // hiD
+    // デフォルト値：シド「誘感コレクション」の例に合わせる
+    if (id === 'chestHigh')     { ps.value = 4; ns.value = 2; }           // hiC
+    else if (id === 'chestLow') { ps.value = 2; ns.value = 5; accState['chestLow'] = 's'; } // mid1F♯
+    else if (id === 'falsettoHigh') { ps.value = 4; ns.value = 3; }       // hiD
 
     ps.addEventListener('change', () => { activeRecordId = null; document.querySelectorAll('.record-card').forEach(c=>c.classList.remove('active')); updateDisplay(id); updatePiano(); });
     ns.addEventListener('change', () => { activeRecordId = null; document.querySelectorAll('.record-card').forEach(c=>c.classList.remove('active')); updateDisplay(id); updatePiano(); });
   });
-  // chestLow の♯ボタンを初期選択状態に
+  // chestLow の♯ボタンを初期選択状態にする
   document.querySelectorAll('#acc-chestLow button').forEach(b => {
     b.classList.toggle('sel', b.dataset.v === 's');
   });
@@ -1277,8 +1273,7 @@ function drawPianoMidis(ch, cl, fh) {
 
   if (tch !== null && tcl !== null)
     for (let m = Math.min(tch,tcl); m <= Math.max(tch,tcl); m++) mark(m, 'key-range-chest');
-  if (tfh !== null)
-    mark(tfh, 'key-range-falsetto');
+  if (tfh !== null) mark(tfh, 'key-range-falsetto');
 
   mark(tch, 'key-chest-high');
   mark(tcl, 'key-chest-low');
@@ -1356,7 +1351,7 @@ function updatePiano() {
   drawPianoMidis(
     getNoteMidi('chestHigh'),
     getNoteMidi('chestLow'),
-    getNoteMidi('falsettoHigh')
+    getNoteMidi('falsettoHigh'),
   );
 }
 
@@ -1401,7 +1396,6 @@ function falsettoBadge(r) {
   if (!r.falsettoHigh || r.falsettoHigh === 'なし') return null;
   return `裏声　最高音 ${r.falsettoHigh}`;
 }
-}
 
 // 保存済みの音名文字列 → MIDI番号に変換
 function noteNameToMidi(name) {
@@ -1428,7 +1422,7 @@ function loadRecordToPianoMidis(r) {
   drawPianoMidis(
     noteNameToMidi(r.chestHigh),
     noteNameToMidi(r.chestLow),
-    noteNameToMidi(r.falsettoHigh)
+    noteNameToMidi(r.falsettoHigh),
   );
 }
 
@@ -1464,7 +1458,6 @@ function buildEditSelects() {
   EDIT_FIELD_IDS.forEach(id => {
     const ps = document.getElementById('e' + id + 'Prefix');
     const ns = document.getElementById('e' + id + 'Note');
-    if (!ps || !ns) return;
     PREFIXES.forEach((p, i) => {
       const o = document.createElement('option');
       o.value = i; o.textContent = p.label; ps.appendChild(o);
