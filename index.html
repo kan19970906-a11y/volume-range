@@ -301,7 +301,7 @@
   }
   .piano-section h2 {
     font-size: 0.9rem;
-    letter-spacing: 0.12em;
+    letter-spacing: 0.1em;
     color: var(--text);
     font-family: 'Shippori Mincho', serif;
     font-weight: 600;
@@ -728,13 +728,13 @@
   }
   .badge-chest {
     color: var(--chest);
-    border-color: rgba(232,96,74,0.6);
-    background: rgba(232,96,74,0.1);
+    border-color: rgba(232,112,96,0.4);
+    background: rgba(232,112,96,0.07);
   }
   .badge-falsetto {
     color: var(--falsetto);
-    border-color: rgba(74,144,232,0.6);
-    background: rgba(74,144,232,0.1);
+    border-color: rgba(112,168,232,0.4);
+    background: rgba(112,168,232,0.07);
   }
   .btn-delete {
     background: none;
@@ -2129,22 +2129,15 @@ function renderRecords() {
 buildSelects();
 buildEditSelects();
 buildPiano();
-// 初期スクロール位置をmid1F(MIDI 65)付近に設定
+// 初期スクロール: mid2E(MIDI 76)が画面中央付近に来るよう設定
 (function() {
-  const scroll = document.querySelector('.piano-scroll');
-  const wp = window._whitePos;
+  var scroll = document.querySelector('.piano-scroll');
+  var wp = window._whitePos;
   if (!scroll || !wp) return;
-  // 初期スクロール位置をmid2E(MIDI 76)が中央付近に来るよう設定
-  const scroll = document.querySelector('.piano-scroll');
-  const wp = window._whitePos;
-  if (scroll && wp) {
-    const targetMidi = 76; // mid2E
-    const wi = wp[targetMidi];
-    if (wi !== undefined) {
-      const centerOffset = scroll.clientWidth / 2;
-      scroll.scrollLeft = wi * 22 - centerOffset + 11;
-    }
-  }
+  var wi = wp[76]; // mid2E
+  if (wi === undefined) return;
+  var center = scroll.clientWidth / 2;
+  scroll.scrollLeft = wi * 22 - center + 11;
 })();
 updatePiano();
 renderRecords();
