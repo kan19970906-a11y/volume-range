@@ -853,11 +853,11 @@
     <div class="form-grid">
       <div class="form-group">
         <label>歌手名</label>
-        <input type="text" id="singerName" placeholder="例：山田太郎">
+        <input type="text" id="singerName" placeholder="例：シド">
       </div>
       <div class="form-group">
         <label>楽曲名</label>
-        <input type="text" id="songName" placeholder="例：〇〇〇〇">
+        <input type="text" id="songName" placeholder="例：誘感コレクション">
       </div>
     </div>
 
@@ -922,27 +922,6 @@
         </div>
       </div>
 
-      <!-- 裏声 最低音 — nullable -->
-      <div class="range-group falsetto">
-        <div class="rg-header">
-          <div class="rg-title"><div class="rg-dot"></div>裏声　最低音</div>
-          <div class="none-pill" id="pill-falsettoLow" onclick="toggleNone('falsettoLow')">
-            <div class="pill-box">✓</div>
-            <span class="pill-text">なし</span>
-          </div>
-        </div>
-        <div class="note-selector" id="sel-falsettoLow">
-          <select id="falsettoLowPrefix"></select>
-          <select id="falsettoLowNote"></select>
-          <div class="acc-btns" id="acc-falsettoLow">
-            <button data-v="n" class="sel" onclick="setAcc('falsettoLow','n')">♮</button>
-            <button data-v="s" onclick="setAcc('falsettoLow','s')">♯</button>
-            <button data-v="f" onclick="setAcc('falsettoLow','f')">♭</button>
-          </div>
-          <span class="note-display" id="disp-falsettoLow"></span>
-        </div>
-      </div>
-
     </div><!-- .range-inputs -->
 
     <button class="btn-add" onclick="addRecord()">記録する</button>
@@ -981,8 +960,6 @@
         <div class="rd-item falsetto">
           <div class="rd-label"><div class="legend-dot" style="background:var(--falsetto)"></div>裏声</div>
           <div class="rd-notes">
-            <span class="rd-note" id="rd-falsettoLow">—</span>
-            <span class="rd-arrow">〜</span>
             <span class="rd-note" id="rd-falsettoHigh">—</span>
           </div>
         </div>
@@ -1069,24 +1046,6 @@
           <span class="note-display" id="edisp-falsettoHigh"></span>
         </div>
       </div>
-      <div class="range-group falsetto">
-        <div class="rg-header">
-          <div class="rg-title"><div class="rg-dot"></div>裏声　最低音</div>
-          <div class="none-pill" id="epill-falsettoLow" onclick="toggleEditNone('falsettoLow')">
-            <div class="pill-box">✓</div><span class="pill-text">なし</span>
-          </div>
-        </div>
-        <div class="note-selector" id="esel-falsettoLow">
-          <select id="efalsettoLowPrefix"></select>
-          <select id="efalsettoLowNote"></select>
-          <div class="acc-btns" id="eacc-falsettoLow">
-            <button data-v="n" class="sel" onclick="setEditAcc('falsettoLow','n')">♮</button>
-            <button data-v="s" onclick="setEditAcc('falsettoLow','s')">♯</button>
-            <button data-v="f" onclick="setEditAcc('falsettoLow','f')">♭</button>
-          </div>
-          <span class="note-display" id="edisp-falsettoLow"></span>
-        </div>
-      </div>
     </div>
     <div class="modal-footer">
       <button class="btn-cancel" onclick="closeEditModal()">キャンセル</button>
@@ -1119,32 +1078,43 @@ const NOTES = [
 const ACC_OFFSET = { n:0, s:+1, f:-1 };
 const ACC_LABEL  = { n:'', s:'♯', f:'♭' };
 
-const FIELD_IDS = ['chestHigh','chestLow','falsettoHigh','falsettoLow'];
-const accState  = { chestHigh:'n', chestLow:'n', falsettoHigh:'n', falsettoLow:'n' };
-const noneState = { chestLow:false, falsettoHigh:false, falsettoLow:false };
+const FIELD_IDS = ['chestHigh','chestLow','falsettoHigh'];
+const accState  = { chestHigh:'n', chestLow:'n', falsettoHigh:'n' };
+const noneState = { chestLow:false, falsettoHigh:false };
 
 // ── Build selects ────────────────────────────────────
 function buildSelects() {
   FIELD_IDS.forEach(id => {
     const ps = document.getElementById(id + 'Prefix');
     const ns = document.getElementById(id + 'Note');
+    if (!ps || !ns) return;
 
     PREFIXES.forEach((p, i) => {
       const o = document.createElement('option');
       o.value = i; o.textContent = p.label;
       ps.appendChild(o);
     });
-    ps.value = id.includes('High') ? 3 : 2;
 
     NOTES.forEach((n, i) => {
       const o = document.createElement('option');
       o.value = i; o.textContent = n.name;
       ns.appendChild(o);
     });
-    ns.value = 0;
+
+    // デフォルト値：例に合わせる
+    // chestHigh → hiC (prefix=4=hi, note=2=C)
+    // chestLow  → mid1F♯ (prefix=2=mid1, note=5=F, acc=♯)
+    // falsettoHigh → hiD (prefix=4=hi, note=3=D)
+    if (id === 'chestHigh')    { ps.value = 4; ns.value = 2; }       // hiC
+    else if (id === 'chestLow'){ ps.value = 2; ns.value = 5; accState['chestLow'] = 's'; } // mid1F♯
+    else if (id === 'falsettoHigh') { ps.value = 4; ns.value = 3; }  // hiD
 
     ps.addEventListener('change', () => { activeRecordId = null; document.querySelectorAll('.record-card').forEach(c=>c.classList.remove('active')); updateDisplay(id); updatePiano(); });
     ns.addEventListener('change', () => { activeRecordId = null; document.querySelectorAll('.record-card').forEach(c=>c.classList.remove('active')); updateDisplay(id); updatePiano(); });
+  });
+  // chestLow の♯ボタンを初期選択状態に
+  document.querySelectorAll('#acc-chestLow button').forEach(b => {
+    b.classList.toggle('sel', b.dataset.v === 's');
   });
   FIELD_IDS.forEach(updateDisplay);
 }
@@ -1228,7 +1198,7 @@ function midiToNoteName(midi) {
 }
 
 // 音域表示パネルを更新
-function updateRangeDisplay(ch, cl, fh, fl) {
+function updateRangeDisplay(ch, cl, fh) {
   function setText(elId, midi) {
     const el = document.getElementById(elId);
     if (!el) return;
@@ -1244,7 +1214,6 @@ function updateRangeDisplay(ch, cl, fh, fl) {
   setText('rd-chestHigh',    ch);
   setText('rd-chestLow',     cl);
   setText('rd-falsettoHigh', fh);
-  setText('rd-falsettoLow',  fl);
 }
 
 // ═══ Transpose ══════════════════════════════════════
@@ -1286,7 +1255,7 @@ function applyTranspose(midi) {
 }
 
 // MIDIを直接受け取って鍵盤を描画する共通関数
-function drawPianoMidis(ch, cl, fh, fl) {
+function drawPianoMidis(ch, cl, fh) {
   // reset
   for (let m = PIANO_START; m <= PIANO_END; m++) {
     const el = document.getElementById('key-' + m);
@@ -1305,20 +1274,18 @@ function drawPianoMidis(ch, cl, fh, fl) {
   const tch = applyTranspose(ch);
   const tcl = applyTranspose(cl);
   const tfh = applyTranspose(fh);
-  const tfl = applyTranspose(fl);
 
   if (tch !== null && tcl !== null)
     for (let m = Math.min(tch,tcl); m <= Math.max(tch,tcl); m++) mark(m, 'key-range-chest');
-  if (tfh !== null && tfl !== null)
-    for (let m = Math.min(tfh,tfl); m <= Math.max(tfh,tfl); m++) mark(m, 'key-range-falsetto');
+  if (tfh !== null)
+    mark(tfh, 'key-range-falsetto');
 
   mark(tch, 'key-chest-high');
   mark(tcl, 'key-chest-low');
   mark(tfh, 'key-falsetto-high');
-  mark(tfl, 'key-falsetto-low');
 
   // 音域表示パネル更新（移調後の音名）
-  updateRangeDisplay(tch, tcl, tfh, tfl);
+  updateRangeDisplay(tch, tcl, tfh);
 }
 const PIANO_START = 45;  // A2
 const PIANO_END   = 115; // G7
@@ -1389,8 +1356,7 @@ function updatePiano() {
   drawPianoMidis(
     getNoteMidi('chestHigh'),
     getNoteMidi('chestLow'),
-    getNoteMidi('falsettoHigh'),
-    getNoteMidi('falsettoLow')
+    getNoteMidi('falsettoHigh')
   );
 }
 
@@ -1408,7 +1374,6 @@ function addRecord() {
     chestHigh:    getNoteName('chestHigh'),
     chestLow:     getNoteName('chestLow'),
     falsettoHigh: getNoteName('falsettoHigh'),
-    falsettoLow:  getNoteName('falsettoLow'),
   });
   // 追加した歌手のグループを自動で開く
   const addedKey = singer || '（名前なし）';
@@ -1433,12 +1398,9 @@ function chestBadge(r) {
 }
 
 function falsettoBadge(r) {
-  const bH = r.falsettoHigh === 'なし';
-  const bL = r.falsettoLow  === 'なし';
-  if (bH && bL) return null;
-  if (bH) return `裏声　最低音 ${r.falsettoLow}`;
-  if (bL) return `裏声　最高音 ${r.falsettoHigh}`;
-  return `裏声　${r.falsettoLow} 〜 ${r.falsettoHigh}`;
+  if (!r.falsettoHigh || r.falsettoHigh === 'なし') return null;
+  return `裏声　最高音 ${r.falsettoHigh}`;
+}
 }
 
 // 保存済みの音名文字列 → MIDI番号に変換
@@ -1466,8 +1428,7 @@ function loadRecordToPianoMidis(r) {
   drawPianoMidis(
     noteNameToMidi(r.chestHigh),
     noteNameToMidi(r.chestLow),
-    noteNameToMidi(r.falsettoHigh),
-    noteNameToMidi(r.falsettoLow)
+    noteNameToMidi(r.falsettoHigh)
   );
 }
 
@@ -1494,15 +1455,16 @@ function loadRecordToPiano(id) {
 }
 
 // ═══ Edit Modal ══════════════════════════════════════
-const EDIT_FIELD_IDS = ['chestHigh','chestLow','falsettoHigh','falsettoLow'];
-const editAccState  = { chestHigh:'n', chestLow:'n', falsettoHigh:'n', falsettoLow:'n' };
-const editNoneState = { chestLow:false, falsettoHigh:false, falsettoLow:false };
+const EDIT_FIELD_IDS = ['chestHigh','chestLow','falsettoHigh'];
+const editAccState  = { chestHigh:'n', chestLow:'n', falsettoHigh:'n' };
+const editNoneState = { chestLow:false, falsettoHigh:false };
 let editingRecordId = null;
 
 function buildEditSelects() {
   EDIT_FIELD_IDS.forEach(id => {
     const ps = document.getElementById('e' + id + 'Prefix');
     const ns = document.getElementById('e' + id + 'Note');
+    if (!ps || !ns) return;
     PREFIXES.forEach((p, i) => {
       const o = document.createElement('option');
       o.value = i; o.textContent = p.label; ps.appendChild(o);
@@ -1609,7 +1571,6 @@ function openEditModal(id) {
   parseNoteToModal('chestHigh',    r.chestHigh);
   parseNoteToModal('chestLow',     r.chestLow);
   parseNoteToModal('falsettoHigh', r.falsettoHigh);
-  parseNoteToModal('falsettoLow',  r.falsettoLow);
 
   document.getElementById('editModal').classList.add('open');
 }
@@ -1629,7 +1590,6 @@ function saveEdit() {
     chestHigh:    getEditNoteName('chestHigh'),
     chestLow:     getEditNoteName('chestLow'),
     falsettoHigh: getEditNoteName('falsettoHigh'),
-    falsettoLow:  getEditNoteName('falsettoLow'),
   };
   saveRecords();
   closeEditModal();
