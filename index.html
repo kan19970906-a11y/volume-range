@@ -1005,8 +1005,8 @@
     </div>
     <div class="form-grid">
       <div class="form-group" style="grid-column:1/-1">
-        <label>曲名よみがな <span style="font-size:0.7em;color:var(--muted)">(漢字の曲名のとき入力)</span></label>
-        <input type="text" id="songReading" placeholder="例：ゆうかんこれくしょん" style="font-family:'DM Mono',monospace;font-size:0.85rem">
+        <label>曲名の読み <span style="font-size:0.7em;color:var(--muted)">(漢字の曲名のとき、頭文字1文字だけ)</span></label>
+        <input type="text" id="songReading" placeholder="例：ゆ" maxlength="1" style="font-family:'DM Mono',monospace;font-size:1.1rem;max-width:60px">
       </div>
     </div>
 
@@ -1164,8 +1164,8 @@
     </div>
     <div class="form-grid">
       <div class="form-group" style="grid-column:1/-1">
-        <label>曲名よみがな <span style="font-size:0.7em;color:var(--muted)">(漢字の曲名のとき入力)</span></label>
-        <input type="text" id="editSongReading" placeholder="例：ゆうかんこれくしょん" style="font-family:'DM Mono',monospace;font-size:0.85rem">
+        <label>曲名の読み <span style="font-size:0.7em;color:var(--muted)">(漢字の曲名のとき、頭文字1文字だけ)</span></label>
+        <input type="text" id="editSongReading" placeholder="例：ゆ" maxlength="1" style="font-family:'DM Mono',monospace;font-size:1.1rem;max-width:60px">
       </div>
     </div>
     <div class="range-inputs">
@@ -1600,7 +1600,7 @@ function saveRecords() { localStorage.setItem('vocalRecords', JSON.stringify(rec
 function addRecord() {
   const singer      = document.getElementById('singerName').value.trim();
   const song        = document.getElementById('songName').value.trim();
-  const songReading = document.getElementById('songReading').value.trim();
+  const songReading = document.getElementById('songReading').value.trim().charAt(0);
   if (!singer && !song) { document.getElementById('singerName').focus(); return; }
 
   // 重複チェック
@@ -1844,7 +1844,7 @@ function saveEdit() {
     ...records[idx],
     singer:       document.getElementById('editSingerName').value.trim(),
     song:         document.getElementById('editSongName').value.trim(),
-    songReading:  document.getElementById('editSongReading').value.trim(),
+    songReading:  document.getElementById('editSongReading').value.trim().charAt(0),
     chestHigh:    getEditNoteName('chestHigh'),
     chestLow:     getEditNoteName('chestLow'),
     falsettoHigh: getEditNoteName('falsettoHigh'),
