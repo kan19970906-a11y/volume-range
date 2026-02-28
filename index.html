@@ -701,7 +701,12 @@
     border-left: 2px solid var(--border);
     margin-left: 18px;
   }
-  .kana-body.open { display: block; }
+  .kana-sub {
+    color: var(--muted);
+    opacity: 0.7;
+    font-size: 0.65rem;
+    letter-spacing: 0.05em;
+  }
   .singer-group { margin-bottom: 12px; }
 
   .singer-header {
@@ -1599,34 +1604,30 @@ const openKanaRows = new Set();
 const openSingers  = new Set();
 
 // 読みの先頭文字 → 行名マッピング
+const KANA_ROWS = [
+  { key: 'あ行', label: 'あ行', sub: 'あいうえお', chars: 'あいうえおぁぃぅぇぉアイウエオァィゥェォ' },
+  { key: 'か行', label: 'か行', sub: 'かきくけこ', chars: 'かきくけこがぎぐげごカキクケコガギグゲゴ' },
+  { key: 'さ行', label: 'さ行', sub: 'さしすせそ', chars: 'さしすせそざじずぜぞサシスセソザジズゼゾ' },
+  { key: 'た行', label: 'た行', sub: 'たちつてと', chars: 'たちつてとだぢづでどタチツテトダヂヅデド' },
+  { key: 'な行', label: 'な行', sub: 'なにぬねの', chars: 'なにぬねのナニヌネノ' },
+  { key: 'は行', label: 'は行', sub: 'はひふへほ', chars: 'はひふへほばびぶべぼぱぴぷぺぽハヒフヘホバビブベボパピプペポ' },
+  { key: 'ま行', label: 'ま行', sub: 'まみむめも', chars: 'まみむめもマミムメモ' },
+  { key: 'や行', label: 'や行', sub: 'やゆよ',     chars: 'やゆよゃゅょヤユヨャュョ' },
+  { key: 'ら行', label: 'ら行', sub: 'らりるれろ', chars: 'らりるれろラリルレロ' },
+  { key: 'わ行', label: 'わ行', sub: 'わをん',     chars: 'わをんわをんヲン' },
+  { key: 'A-Z',  label: 'A-Z',  sub: 'アルファベット', chars: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz' },
+  { key: '0-9',  label: '0-9',  sub: '数字',       chars: '0123456789０１２３４５６７８９' },
+  { key: 'その他',label: 'その他',sub: '',          chars: '' },
+];
+const KANA_ROW_ORDER = KANA_ROWS.map(r => r.key);
+
 function getKanaRow(str) {
   const c = (str || '').charAt(0);
-  // ひらがな・カタカナ → 行判定
-  const code = c.charCodeAt(0);
-  // カタカナをひらがなに正規化
-  const hira = code >= 0x30A1 && code <= 0x30F6
-    ? String.fromCharCode(code - 0x60)
-    : c;
-  const h = hira.charCodeAt(0);
-  if (h >= 0x3042 && h <= 0x3044) return 'あ行'; // あいう...
-  if (h >= 0x3042 && h <= 0x304A) return 'あ行'; // あ〜お
-  if (h >= 0x304B && h <= 0x3054) return 'か行'; // か〜ご
-  if (h >= 0x3055 && h <= 0x305E) return 'さ行';
-  if (h >= 0x305F && h <= 0x3069) return 'た行';
-  if (h >= 0x306A && h <= 0x306E) return 'な行';
-  if (h >= 0x306F && h <= 0x307D) return 'は行';
-  if (h >= 0x307E && h <= 0x3082) return 'ま行';
-  if (h === 0x3084 || h === 0x3086 || h === 0x3088) return 'や行';
-  if (h >= 0x3089 && h <= 0x308D) return 'ら行';
-  if (h >= 0x308F && h <= 0x3093) return 'わ行';
-  // アルファベット
-  if (/^[a-zA-Z]/.test(c)) return 'A-Z';
-  // 数字
-  if (/^[0-9０-９]/.test(c)) return '0-9';
+  for (const row of KANA_ROWS) {
+    if (row.chars.includes(c)) return row.key;
+  }
   return 'その他';
 }
-
-const KANA_ROW_ORDER = ['あ行','か行','さ行','た行','な行','は行','ま行','や行','ら行','わ行','A-Z','0-9','その他'];
 
 function toggleKanaRow(key) {
   openKanaRows.has(key) ? openKanaRows.delete(key) : openKanaRows.add(key);
@@ -1682,13 +1683,14 @@ function renderRecords() {
     kanaGroup.className = 'kana-group';
 
     // 行ヘッダー
+    const rowInfo = KANA_ROWS.find(r => r.key === rowKey) || { label: rowKey, sub: '' };
     const kanaHeader = document.createElement('div');
     kanaHeader.className = 'kana-header' + (isRowOpen ? ' open' : '');
     kanaHeader.innerHTML = `
-      <div class="kana-badge">${rowKey.charAt(0)}</div>
+      <div class="kana-badge">${rowInfo.label.charAt(0)}</div>
       <div class="kana-meta">
-        <div class="kana-label">${rowKey}　${singers.length}人</div>
-        <div class="kana-count">${totalSongs}曲</div>
+        <div class="kana-label">${rowInfo.label}　<span class="kana-sub">${rowInfo.sub}</span></div>
+        <div class="kana-count">${singers.length}人・${totalSongs}曲</div>
       </div>
       <span class="kana-chevron">▼</span>
     `;
