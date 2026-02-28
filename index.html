@@ -642,113 +642,66 @@
     font-family: 'DM Mono', monospace; letter-spacing: 0.1em;
   }
 
-  /* ── Kana row groups ── */
-  .kana-group { margin-bottom: 16px; }
-
+  /* ── 行グループ（あ行・か行…） ── */
+  .kana-group { margin-bottom: 10px; }
   .kana-header {
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 8px 14px;
-    cursor: pointer;
-    user-select: none;
-    margin-bottom: 6px;
-  }
-  .kana-badge {
-    width: 36px; height: 36px;
-    border-radius: 10px;
+    padding: 10px 14px;
     background: var(--surface2);
     border: 1px solid var(--border);
+    border-radius: 10px;
+    cursor: pointer;
+    user-select: none;
+    transition: border-color 0.2s;
+  }
+  .kana-header:hover { border-color: var(--accent); }
+  .kana-header.open {
+    border-color: var(--accent);
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    background: color-mix(in srgb, var(--accent) 6%, var(--surface2));
+  }
+  .kana-badge {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    background: var(--bg);
+    border: 1px solid var(--border);
     display: flex; align-items: center; justify-content: center;
-    font-size: 1rem;
-    font-weight: 800;
+    font-size: 0.95rem; font-weight: 800;
     color: var(--accent);
     flex-shrink: 0;
-    transition: all 0.15s;
   }
-  .kana-header:hover .kana-badge { border-color: var(--accent); }
-  .kana-header.open .kana-badge {
-    background: color-mix(in srgb, var(--accent) 15%, var(--surface2));
-    border-color: var(--accent);
-  }
-  .kana-meta {
-    flex: 1;
-  }
+  .kana-header.open .kana-badge { border-color: var(--accent); }
+  .kana-info { flex: 1; }
   .kana-label {
-    font-family: 'DM Mono', monospace;
-    font-size: 0.7rem;
-    color: var(--muted);
-    letter-spacing: 0.1em;
+    font-size: 0.88rem; font-weight: 600;
+    color: var(--text);
   }
-  .kana-count {
+  .kana-sub {
     font-family: 'DM Mono', monospace;
     font-size: 0.62rem;
     color: var(--muted);
-    opacity: 0.7;
     margin-top: 1px;
   }
   .kana-chevron {
-    font-size: 0.7rem;
-    color: var(--muted);
-    transition: transform 0.22s;
+    font-size: 0.65rem; color: var(--muted);
     font-family: 'DM Mono', monospace;
+    transition: transform 0.22s;
   }
   .kana-header.open .kana-chevron { transform: rotate(180deg); }
-
   .kana-body {
     display: none;
-    padding-left: 10px;
-    border-left: 2px solid var(--border);
-    margin-left: 18px;
-    padding-top: 6px;
+    border: 1px solid var(--accent);
+    border-top: none;
+    border-radius: 0 0 10px 10px;
+    padding: 8px;
+    background: color-mix(in srgb, var(--accent) 2%, var(--bg));
   }
   .kana-body.open { display: block; }
 
-  /* ── 母音文字グループ（さ・し・す…） ── */
-  .char-group { margin-bottom: 6px; }
-  .char-header {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 12px;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    cursor: pointer;
-    transition: border-color 0.15s;
-    user-select: none;
-  }
-  .char-header:hover { border-color: var(--accent); }
-  .char-header.open { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 5%, var(--surface2)); border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
-  .char-badge {
-    font-size: 1rem;
-    font-weight: 800;
-    color: var(--accent);
-    min-width: 20px;
-    text-align: center;
-  }
-  .char-count {
-    font-family: 'DM Mono', monospace;
-    font-size: 0.68rem;
-    color: var(--muted);
-    flex: 1;
-  }
-  .char-chevron {
-    font-size: 0.65rem;
-    color: var(--muted);
-    transition: transform 0.2s;
-  }
-  .char-header.open .char-chevron { transform: rotate(180deg); }
-  .char-body {
-    display: none;
-    padding-left: 8px;
-    border: 1px solid var(--accent);
-    border-top: none;
-    border-radius: 0 0 8px 8px;
-    padding-top: 4px;
-    padding-bottom: 4px;
-  }
-  .char-body.open { display: block; }
+  /* ── Singer accordion ── */
   .singer-group { margin-bottom: 12px; }
 
   .singer-header {
@@ -1412,12 +1365,9 @@ function addRecord() {
     falsettoLow:  getNoteName('falsettoLow'),
   });
   // 追加した歌手のグループを自動で開く
-  const singerKey = singer || '（名前なし）';
-  const rowKey    = getKanaRow(singerKey);
-  const charKey   = getKanaChar(singerKey);
-  openKanaRows.add(rowKey);
-  openKanaChars.add(rowKey + ':' + charKey);
-  openSingers.add(singerKey);
+  const addedKey = singer || '（名前なし）';
+  openKanaRows.add(getKanaRow(addedKey));
+  openSingers.add(addedKey);
   saveRecords();
   renderRecords();
 }
@@ -1644,68 +1594,37 @@ document.getElementById('editModal').addEventListener('click', e => {
   if (e.target === document.getElementById('editModal')) closeEditModal();
 });
 
-// 開いている行グループを記憶
-const openKanaRows = new Set();
-const openSingers  = new Set();
-
-// 開いている行・母音グループ・歌手を記憶
-const openKanaRows   = new Set();
-const openKanaChars  = new Set(); // 「さ」「し」など個別文字グループ
-const openSingers    = new Set();
-
 // 五十音行の定義
 const KANA_ROWS = [
-  { key: 'あ行', chars: ['あ','い','う','え','お'] },
-  { key: 'か行', chars: ['か','き','く','け','こ'] },
-  { key: 'さ行', chars: ['さ','し','す','せ','そ'] },
-  { key: 'た行', chars: ['た','ち','つ','て','と'] },
-  { key: 'な行', chars: ['な','に','ぬ','ね','の'] },
-  { key: 'は行', chars: ['は','ひ','ふ','へ','ほ'] },
-  { key: 'ま行', chars: ['ま','み','む','め','も'] },
-  { key: 'や行', chars: ['や','ゆ','よ'] },
-  { key: 'ら行', chars: ['ら','り','る','れ','ろ'] },
-  { key: 'わ行', chars: ['わ','を','ん'] },
-  { key: 'A-Z',  chars: ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z'] },
-  { key: '0-9',  chars: ['0','1','2','3','4','5','6','7','8','9'] },
-  { key: 'その他', chars: [] },
+  { key: 'あ行', label: 'あ行', sub: 'あいうえお', test: c => 'あいうえおぁぃぅぇぉアイウエオァィゥェォ'.includes(c) },
+  { key: 'か行', label: 'か行', sub: 'かきくけこ', test: c => 'かきくけこがぎぐげごカキクケコガギグゲゴ'.includes(c) },
+  { key: 'さ行', label: 'さ行', sub: 'さしすせそ', test: c => 'さしすせそざじずぜぞサシスセソザジズゼゾ'.includes(c) },
+  { key: 'た行', label: 'た行', sub: 'たちつてと', test: c => 'たちつてとだぢづでどタチツテトダヂヅデド'.includes(c) },
+  { key: 'な行', label: 'な行', sub: 'なにぬねの', test: c => 'なにぬねのナニヌネノ'.includes(c) },
+  { key: 'は行', label: 'は行', sub: 'はひふへほ', test: c => 'はひふへほばびぶべぼぱぴぷぺぽハヒフヘホバビブベボパピプペポ'.includes(c) },
+  { key: 'ま行', label: 'ま行', sub: 'まみむめも', test: c => 'まみむめもマミムメモ'.includes(c) },
+  { key: 'や行', label: 'や行', sub: 'やゆよ',     test: c => 'やゆよゃゅょヤユヨャュョ'.includes(c) },
+  { key: 'ら行', label: 'ら行', sub: 'らりるれろ', test: c => 'らりるれろラリルレロ'.includes(c) },
+  { key: 'わ行', label: 'わ行', sub: 'わをん',     test: c => 'わをんワヲン'.includes(c) },
+  { key: 'A-Z',  label: 'A-Z',  sub: 'アルファベット', test: c => /^[a-zA-Z]$/.test(c) },
+  { key: '0-9',  label: '0-9',  sub: '数字',       test: c => /^[0-9０-９]$/.test(c) },
+  { key: 'その他',label: 'その他', sub: '',          test: () => true },
 ];
 
-// カタカナ→ひらがな変換
-function toHira(c) {
-  const code = c.charCodeAt(0);
-  return (code >= 0x30A1 && code <= 0x30F6) ? String.fromCharCode(code - 0x60) : c;
-}
-
-// 文字がどの行に属するか
 function getKanaRow(singer) {
-  const c = toHira((singer || '').charAt(0)).toLowerCase();
+  const c = (singer || '').charAt(0);
   for (const row of KANA_ROWS) {
-    if (row.key === 'その他') continue;
-    for (const rc of row.chars) {
-      if (c === rc.toLowerCase() || c === toHira(rc).toLowerCase()) return row.key;
-    }
+    if (row.test(c)) return row.key;
   }
   return 'その他';
 }
 
-// 文字がどの「母音グループ」に属するか（さ行の中の「さ」「し」など）
-function getKanaChar(singer) {
-  const c = toHira((singer || '').charAt(0));
-  for (const row of KANA_ROWS) {
-    for (const rc of row.chars) {
-      const hrc = toHira(rc);
-      if (c === hrc || c.toLowerCase() === rc.toLowerCase()) return rc;
-    }
-  }
-  return (singer || '').charAt(0);
-}
+// 開いている行・歌手グループを記憶
+const openKanaRows = new Set();
+const openSingers  = new Set();
 
 function toggleKanaRow(key) {
   openKanaRows.has(key) ? openKanaRows.delete(key) : openKanaRows.add(key);
-  renderRecords();
-}
-function toggleKanaChar(key) {
-  openKanaChars.has(key) ? openKanaChars.delete(key) : openKanaChars.add(key);
   renderRecords();
 }
 function toggleSingerGroup(singerKey) {
@@ -1721,138 +1640,105 @@ function renderRecords() {
   }
   list.innerHTML = '';
 
-  // 歌手ごとにグループ化
+  // 歌手ごとにグループ化・五十音順
   const singerMap = {};
   records.forEach(r => {
     const k = r.singer || '（名前なし）';
     if (!singerMap[k]) singerMap[k] = [];
     singerMap[k].push(r);
   });
-  Object.keys(singerMap).forEach(k => {
-    singerMap[k].sort((a, b) => (a.song||'').localeCompare(b.song||'','ja'));
+  const singerKeys = Object.keys(singerMap).sort((a, b) => a.localeCompare(b, 'ja'));
+  singerKeys.forEach(k => {
+    singerMap[k].sort((a, b) => (a.song||'').localeCompare(b.song||'', 'ja'));
   });
 
-  // 行 → 母音文字 → 歌手 の3階層マップ
-  const rowMap = {}; // rowKey → { charKey → [singerKey] }
-  Object.keys(singerMap).forEach(singerKey => {
-    const rowKey  = getKanaRow(singerKey);
-    const charKey = getKanaChar(singerKey);
-    if (!rowMap[rowKey]) rowMap[rowKey] = {};
-    if (!rowMap[rowKey][charKey]) rowMap[rowKey][charKey] = [];
-    rowMap[rowKey][charKey].push(singerKey);
+  // 行ごとに分類
+  const rowMap = {}; // rowKey → [singerKey]
+  singerKeys.forEach(singerKey => {
+    const rowKey = getKanaRow(singerKey);
+    if (!rowMap[rowKey]) rowMap[rowKey] = [];
+    rowMap[rowKey].push(singerKey);
   });
 
-  // 存在する行を順番に表示
+  // 定義順で存在する行だけ表示
   KANA_ROWS.forEach(rowDef => {
-    const rowKey = rowDef.key;
-    if (!rowMap[rowKey]) return;
+    const singers = rowMap[rowDef.key];
+    if (!singers || !singers.length) return;
 
-    const charMap  = rowMap[rowKey];
-    const isRowOpen = openKanaRows.has(rowKey);
-    const totalSingers = Object.values(charMap).flat().length;
-    const totalSongs   = Object.values(charMap).flat().reduce((s,k) => s + singerMap[k].length, 0);
+    const totalSongs = singers.reduce((s, k) => s + singerMap[k].length, 0);
+    const isRowOpen  = openKanaRows.has(rowDef.key);
 
-    // ── 行ヘッダー ──
+    // ── 行グループ ──
     const kanaGroup = document.createElement('div');
     kanaGroup.className = 'kana-group';
 
     const kanaHeader = document.createElement('div');
     kanaHeader.className = 'kana-header' + (isRowOpen ? ' open' : '');
     kanaHeader.innerHTML = `
-      <div class="kana-badge">${rowKey.charAt(0)}</div>
-      <div class="kana-meta">
-        <div class="kana-label">${rowKey}</div>
-        <div class="kana-count">${totalSingers}人・${totalSongs}曲</div>
+      <div class="kana-badge">${rowDef.label.charAt(0)}</div>
+      <div class="kana-info">
+        <div class="kana-label">${rowDef.label}</div>
+        <div class="kana-sub">${rowDef.sub ? rowDef.sub + '　' : ''}${singers.length}人・${totalSongs}曲</div>
       </div>
       <span class="kana-chevron">▼</span>
     `;
-    kanaHeader.addEventListener('click', () => toggleKanaRow(rowKey));
+    kanaHeader.addEventListener('click', () => toggleKanaRow(rowDef.key));
 
-    // ── 行ボディ（母音文字グループ一覧）──
     const kanaBody = document.createElement('div');
     kanaBody.className = 'kana-body' + (isRowOpen ? ' open' : '');
 
-    // 母音文字を定義順で表示
-    const charOrder = rowDef.chars.filter(c => charMap[c] || charMap[toHira(c)]);
-    // その他の場合はそのまま
-    const allCharKeys = Object.keys(charMap).sort((a,b) => a.localeCompare(b,'ja'));
-    const orderedChars = rowKey === 'その他' ? allCharKeys
-      : rowDef.chars.filter(c => charMap[c]);
+    // ── 歌手グループ ──
+    singers.forEach(singerKey => {
+      const singerRecords = singerMap[singerKey];
+      const isSingerOpen  = openSingers.has(singerKey);
 
-    orderedChars.forEach(charKey => {
-      const singers = (charMap[charKey] || []).sort((a,b) => a.localeCompare(b,'ja'));
-      const charSongs = singers.reduce((s,k) => s + singerMap[k].length, 0);
-      const isCharOpen = openKanaChars.has(rowKey + ':' + charKey);
+      const group = document.createElement('div');
+      group.className = 'singer-group';
 
-      const charGroup = document.createElement('div');
-      charGroup.className = 'char-group';
-
-      const charHeader = document.createElement('div');
-      charHeader.className = 'char-header' + (isCharOpen ? ' open' : '');
-      charHeader.innerHTML = `
-        <span class="char-badge">${charKey}</span>
-        <span class="char-count">${singers.length}人・${charSongs}曲</span>
-        <span class="char-chevron">▼</span>
-      `;
-      charHeader.addEventListener('click', () => toggleKanaChar(rowKey + ':' + charKey));
-
-      const charBody = document.createElement('div');
-      charBody.className = 'char-body' + (isCharOpen ? ' open' : '');
-
-      singers.forEach(singerKey => {
-        const singerRecords = singerMap[singerKey];
-        const isSingerOpen  = openSingers.has(singerKey);
-
-        const singerGroup = document.createElement('div');
-        singerGroup.className = 'singer-group';
-
-        const singerHeader = document.createElement('div');
-        singerHeader.className = 'singer-header' + (isSingerOpen ? ' open' : '');
-        singerHeader.innerHTML = `
-          <div class="singer-header-left">
-            <div class="singer-avatar">${singerKey.charAt(0)}</div>
-            <div>
-              <div class="singer-name-label">${singerKey}</div>
-              <div class="singer-count">${singerRecords.length}曲</div>
-            </div>
+      const header = document.createElement('div');
+      header.className = 'singer-header' + (isSingerOpen ? ' open' : '');
+      header.innerHTML = `
+        <div class="singer-header-left">
+          <div class="singer-avatar">${singerKey.charAt(0)}</div>
+          <div>
+            <div class="singer-name-label">${singerKey}</div>
+            <div class="singer-count">${singerRecords.length}曲</div>
           </div>
+        </div>
+        <div class="singer-header-right">
           <span class="singer-chevron">▼</span>
+        </div>
+      `;
+      header.addEventListener('click', () => toggleSingerGroup(singerKey));
+
+      const songs = document.createElement('div');
+      songs.className = 'singer-songs' + (isSingerOpen ? ' open' : '');
+
+      singerRecords.forEach(r => {
+        const fb   = falsettoBadge(r);
+        const card = document.createElement('div');
+        card.className = 'record-card' + (activeRecordId === r.id ? ' active' : '');
+        card.id = 'rc-' + r.id;
+        card.innerHTML = `
+          <div style="cursor:pointer;flex:1" onclick="loadRecordToPiano(${r.id})">
+            <div class="record-song" style="margin-bottom:6px">${r.song || '—'}</div>
+            <div class="record-ranges">
+              <span class="range-badge badge-chest">${chestBadge(r)}</span>
+              ${fb ? `<span class="range-badge badge-falsetto">${fb}</span>` : ''}
+            </div>
+            <div class="tap-hint">タップして鍵盤に表示</div>
+          </div>
+          <div class="card-actions">
+            <button class="btn-edit"   onclick="event.stopPropagation();openEditModal(${r.id})">編集</button>
+            <button class="btn-delete" onclick="event.stopPropagation();deleteRecord(${r.id})">削除</button>
+          </div>
         `;
-        singerHeader.addEventListener('click', () => toggleSingerGroup(singerKey));
-
-        const singerSongs = document.createElement('div');
-        singerSongs.className = 'singer-songs' + (isSingerOpen ? ' open' : '');
-
-        singerRecords.forEach(r => {
-          const fb   = falsettoBadge(r);
-          const card = document.createElement('div');
-          card.className = 'record-card' + (activeRecordId === r.id ? ' active' : '');
-          card.id = 'rc-' + r.id;
-          card.innerHTML = `
-            <div style="cursor:pointer;flex:1" onclick="loadRecordToPiano(${r.id})">
-              <div class="record-song" style="margin-bottom:6px">${r.song || '—'}</div>
-              <div class="record-ranges">
-                <span class="range-badge badge-chest">${chestBadge(r)}</span>
-                ${fb ? `<span class="range-badge badge-falsetto">${fb}</span>` : ''}
-              </div>
-              <div class="tap-hint">タップして鍵盤に表示</div>
-            </div>
-            <div class="card-actions">
-              <button class="btn-edit"   onclick="event.stopPropagation();openEditModal(${r.id})">編集</button>
-              <button class="btn-delete" onclick="event.stopPropagation();deleteRecord(${r.id})">削除</button>
-            </div>
-          `;
-          singerSongs.appendChild(card);
-        });
-
-        singerGroup.appendChild(singerHeader);
-        singerGroup.appendChild(singerSongs);
-        charBody.appendChild(singerGroup);
+        songs.appendChild(card);
       });
 
-      charGroup.appendChild(charHeader);
-      charGroup.appendChild(charBody);
-      kanaBody.appendChild(charGroup);
+      group.appendChild(header);
+      group.appendChild(songs);
+      kanaBody.appendChild(group);
     });
 
     kanaGroup.appendChild(kanaHeader);
