@@ -266,6 +266,30 @@
   }
   .btn-add:hover { opacity: 0.9; }
   .btn-add:active { transform: scale(0.99); }
+  .btn-add.shake {
+    animation: shake 0.35s ease;
+    background: linear-gradient(135deg, #c0504a, #a03030);
+  }
+  @keyframes shake {
+    0%,100% { transform: translateX(0); }
+    20% { transform: translateX(-6px); }
+    40% { transform: translateX(6px); }
+    60% { transform: translateX(-4px); }
+    80% { transform: translateX(4px); }
+  }
+  .duplicate-msg {
+    display: none;
+    margin-top: 10px;
+    padding: 10px 14px;
+    background: rgba(192,80,74,0.12);
+    border: 1px solid rgba(192,80,74,0.4);
+    border-radius: 8px;
+    color: #e07070;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.78rem;
+    text-align: center;
+  }
+  .duplicate-msg.show { display: block; }
 
   /* ── Piano ── */
   .piano-section {
@@ -924,7 +948,8 @@
 
     </div><!-- .range-inputs -->
 
-    <button class="btn-add" onclick="addRecord()">記録する</button>
+    <button class="btn-add" id="btnAdd" onclick="addRecord()">記録する</button>
+    <div class="duplicate-msg" id="duplicateMsg">この歌手・曲名の組み合わせはすでに登録されています</div>
   </div>
 
   <!-- Piano -->
@@ -1363,6 +1388,21 @@ function addRecord() {
   const singer = document.getElementById('singerName').value.trim();
   const song   = document.getElementById('songName').value.trim();
   if (!singer && !song) { document.getElementById('singerName').focus(); return; }
+
+  // 重複チェック
+  const isDuplicate = records.some(r => r.singer === singer && r.song === song);
+  if (isDuplicate) {
+    const btn = document.getElementById('btnAdd');
+    const msg = document.getElementById('duplicateMsg');
+    btn.classList.add('shake');
+    msg.classList.add('show');
+    setTimeout(() => { btn.classList.remove('shake'); }, 400);
+    setTimeout(() => { msg.classList.remove('show'); }, 3000);
+    return;
+  }
+
+  // メッセージを消す
+  document.getElementById('duplicateMsg').classList.remove('show');
 
   records.unshift({
     id: Date.now(), singer, song,
