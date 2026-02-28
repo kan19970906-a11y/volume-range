@@ -566,6 +566,20 @@
   }
   #importTextarea:focus { border-color: var(--accent); }
   .import-modal-footer { display: flex; gap: 8px; justify-content: flex-end; }
+  .btn-file-select {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 10px;
+    background: var(--surface2);
+    border: 1.5px dashed var(--accent);
+    border-radius: 8px;
+    color: var(--accent);
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .btn-file-select:hover { background: rgba(200,169,110,0.1); }
   .import-result {
     font-family: 'DM Mono', monospace;
     font-size: 0.72rem;
@@ -1138,8 +1152,10 @@
 <div class="import-modal-overlay" id="importModal">
   <div class="import-modal">
     <h3>JSONインポート</h3>
-    <p>ClaudeにJSONを出力してもらい、ここに貼り付けてください。<br>重複する曲はスキップされます。</p>
+    <p>JSONファイルを選択するか、テキストを貼り付けてください。<br>重複する曲はスキップされます。</p>
     <div class="import-result" id="importResult"></div>
+    <input type="file" id="importFile" accept=".json" style="display:none" onchange="onImportFileSelected(event)">
+    <button class="btn-file-select" onclick="document.getElementById('importFile').click()">📂 JSONファイルを選択</button>
     <textarea id="importTextarea" placeholder='[{"singer":"シド","song":"嘘","chestHigh":"hiC","chestLow":"mid1F♯","falsettoHigh":"hiD"}]'></textarea>
     <div class="import-modal-footer">
       <button class="btn-cancel" onclick="closeImportModal()">キャンセル</button>
@@ -1543,6 +1559,17 @@ function exportRecords() {
   a.download = '音域記録_' + new Date().toISOString().slice(0,10) + '.json';
   a.click();
   URL.revokeObjectURL(url);
+}
+
+function onImportFileSelected(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    document.getElementById('importTextarea').value = ev.target.result;
+    document.getElementById('importFile').value = '';
+  };
+  reader.readAsText(file, 'UTF-8');
 }
 
 function openImportModal() {
