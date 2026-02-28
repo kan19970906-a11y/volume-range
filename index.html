@@ -347,6 +347,65 @@
     white-space: nowrap;
   }
   .tp-reset:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ── Live range display ── */
+  .range-display {
+    margin-top: 18px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 18px;
+  }
+  .rd-row {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .rd-item {
+    flex: 1;
+    min-width: 140px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .rd-label {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.68rem;
+    color: var(--muted);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .rd-notes {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-wrap: wrap;
+  }
+  .rd-note {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.92rem;
+    font-weight: 500;
+    color: var(--text);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 3px 8px;
+    min-width: 54px;
+    text-align: center;
+    transition: color 0.2s, border-color 0.2s;
+  }
+  .rd-item.chest   .rd-note { color: var(--chest);   border-color: rgba(232,112,96,0.35); }
+  .rd-item.falsetto .rd-note { color: var(--falsetto); border-color: rgba(112,168,232,0.35); }
+  .rd-note.is-none { color: var(--muted); border-color: var(--border); font-size: 0.75rem; }
+  .rd-arrow {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--muted);
+  }
   .piano-scroll { overflow-x: auto; padding-bottom: 8px; }
   .piano-wrap { position: relative; display: inline-block; }
   .piano-labels { position: relative; height: 18px; margin-bottom: 2px; }
@@ -804,13 +863,25 @@
         <div class="keyboard" id="keyboard"></div>
       </div>
     </div>
-    <div class="piano-legend">
-      <div class="legend-item"><div class="legend-dot" style="background:var(--chest)"></div>地声 最高音</div>
-      <div class="legend-item"><div class="legend-dot" style="background:color-mix(in srgb,var(--chest) 55%,#fff)"></div>地声 最低音</div>
-      <div class="legend-item"><div class="legend-dot" style="background:var(--falsetto)"></div>裏声 最高音</div>
-      <div class="legend-item"><div class="legend-dot" style="background:color-mix(in srgb,var(--falsetto) 55%,#fff)"></div>裏声 最低音</div>
-      <div class="legend-item"><div class="legend-dot" style="background:color-mix(in srgb,var(--chest) 28%,#f0ece5)"></div>地声 音域</div>
-      <div class="legend-item"><div class="legend-dot" style="background:color-mix(in srgb,var(--falsetto) 28%,#f0ece5)"></div>裏声 音域</div>
+    <div class="range-display" id="rangeDisplay">
+      <div class="rd-row">
+        <div class="rd-item chest">
+          <div class="rd-label"><div class="legend-dot" style="background:var(--chest)"></div>地声</div>
+          <div class="rd-notes">
+            <span class="rd-note" id="rd-chestLow">—</span>
+            <span class="rd-arrow">〜</span>
+            <span class="rd-note" id="rd-chestHigh">—</span>
+          </div>
+        </div>
+        <div class="rd-item falsetto">
+          <div class="rd-label"><div class="legend-dot" style="background:var(--falsetto)"></div>裏声</div>
+          <div class="rd-notes">
+            <span class="rd-note" id="rd-falsettoLow">—</span>
+            <span class="rd-arrow">〜</span>
+            <span class="rd-note" id="rd-falsettoHigh">—</span>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -1032,6 +1103,45 @@ function updateDisplay(id) {
   }
 }
 
+// MIDI番号 → 日本式音名に変換
+function midiToNoteName(midi) {
+  if (midi === null) return null;
+  // どのprefixグループか（A基点なので prefix.midi <= midi < prefix.midi+12）
+  const sorted = [...PREFIXES].sort((a,b) => b.midi - a.midi);
+  let prefix = null;
+  for (const p of sorted) {
+    if (midi >= p.midi) { prefix = p; break; }
+  }
+  if (!prefix) return null;
+  const semi = midi - prefix.midi; // 0〜10の範囲
+  const note = NOTES.find(n => n.semi === semi);
+  if (note) return prefix.label + note.name;
+  // 半音上 = ♯ or 半音下 = ♭ で表現
+  const noteSharp = NOTES.find(n => n.semi === semi - 1);
+  if (noteSharp) return prefix.label + noteSharp.name + '♯';
+  return null;
+}
+
+// 音域表示パネルを更新
+function updateRangeDisplay(ch, cl, fh, fl) {
+  function setText(elId, midi) {
+    const el = document.getElementById(elId);
+    if (!el) return;
+    if (midi === null) {
+      el.textContent = 'なし';
+      el.classList.add('is-none');
+    } else {
+      const name = midiToNoteName(midi);
+      el.textContent = name || '—';
+      el.classList.remove('is-none');
+    }
+  }
+  setText('rd-chestHigh',    ch);
+  setText('rd-chestLow',     cl);
+  setText('rd-falsettoHigh', fh);
+  setText('rd-falsettoLow',  fl);
+}
+
 // ═══ Transpose ══════════════════════════════════════
 let transposeAmount = 0;
 
@@ -1101,6 +1211,9 @@ function drawPianoMidis(ch, cl, fh, fl) {
   mark(tcl, 'key-chest-low');
   mark(tfh, 'key-falsetto-high');
   mark(tfl, 'key-falsetto-low');
+
+  // 音域表示パネル更新（移調後の音名）
+  updateRangeDisplay(tch, tcl, tfh, tfl);
 }
 const PIANO_START = 45;  // A2
 const PIANO_END   = 115; // G7
