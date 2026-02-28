@@ -281,8 +281,72 @@
     color: var(--muted);
     font-family: 'DM Mono', monospace;
     text-transform: uppercase;
+  }
+  .piano-top-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
     margin-bottom: 20px;
   }
+
+  /* ── Transpose UI ── */
+  .transpose-ui {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .tp-btn {
+    width: 34px; height: 34px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 1.1rem;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s;
+    flex-shrink: 0;
+    font-family: 'DM Mono', monospace;
+  }
+  .tp-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .tp-btn:active { transform: scale(0.92); }
+
+  .tp-display {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 44px;
+  }
+  .tp-num {
+    font-family: 'DM Mono', monospace;
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--accent);
+    line-height: 1;
+  }
+  .tp-num.zero { color: var(--muted); }
+  .tp-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.55rem;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    margin-top: 2px;
+  }
+  .tp-reset {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    padding: 4px 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .tp-reset:hover { border-color: var(--accent); color: var(--accent); }
   .piano-scroll { overflow-x: auto; padding-bottom: 8px; }
   .piano-wrap { position: relative; display: inline-block; }
   .piano-labels { position: relative; height: 18px; margin-bottom: 2px; }
@@ -722,7 +786,18 @@
 
   <!-- Piano -->
   <div class="piano-section">
-    <h2>鍵盤表示 — 現在入力中</h2>
+    <div class="piano-top-row">
+      <h2>鍵盤表示 — <span id="pianoLabel">現在入力中</span></h2>
+      <div class="transpose-ui">
+        <button class="tp-btn" onclick="changeTranspose(-1)">－</button>
+        <div class="tp-display">
+          <span class="tp-num" id="transposeNum">±0</span>
+          <span class="tp-label">移調</span>
+        </div>
+        <button class="tp-btn" onclick="changeTranspose(+1)">＋</button>
+        <button class="tp-reset" onclick="resetTranspose()">リセット</button>
+      </div>
+    </div>
     <div class="piano-scroll">
       <div class="piano-wrap">
         <div class="piano-labels" id="pianoLabels"></div>
@@ -957,7 +1032,76 @@ function updateDisplay(id) {
   }
 }
 
-// ═══ Piano ══════════════════════════════════════════
+// ═══ Transpose ══════════════════════════════════════
+let transposeAmount = 0;
+
+function changeTranspose(delta) {
+  const next = transposeAmount + delta;
+  if (next < -7 || next > 7) return;
+  transposeAmount = next;
+  updateTransposeUI();
+  // アクティブな記録があればそれを、なければフォームを再描画
+  if (activeRecordId !== null) {
+    const r = records.find(rec => rec.id === activeRecordId);
+    if (r) { loadRecordToPianoMidis(r); return; }
+  }
+  updatePiano();
+}
+
+function resetTranspose() {
+  transposeAmount = 0;
+  updateTransposeUI();
+  if (activeRecordId !== null) {
+    const r = records.find(rec => rec.id === activeRecordId);
+    if (r) { loadRecordToPianoMidis(r); return; }
+  }
+  updatePiano();
+}
+
+function updateTransposeUI() {
+  const num = document.getElementById('transposeNum');
+  num.textContent = transposeAmount === 0 ? '±0' : (transposeAmount > 0 ? '+' + transposeAmount : String(transposeAmount));
+  num.className = 'tp-num' + (transposeAmount === 0 ? ' zero' : '');
+}
+
+// 移調を適用してMIDIを返すヘルパー
+function applyTranspose(midi) {
+  if (midi === null) return null;
+  return midi + transposeAmount;
+}
+
+// MIDIを直接受け取って鍵盤を描画する共通関数
+function drawPianoMidis(ch, cl, fh, fl) {
+  // reset
+  for (let m = PIANO_START; m <= PIANO_END; m++) {
+    const el = document.getElementById('key-' + m);
+    if (!el) continue;
+    const s = ((m - 12) % 12 + 12) % 12;
+    el.className = [1,3,6,8,10].includes(s) ? 'black-key' : 'white-key';
+  }
+
+  function mark(midi, cls) {
+    if (midi === null) return;
+    const el = document.getElementById('key-' + midi);
+    if (el) el.classList.add(cls);
+  }
+
+  // 移調を適用
+  const tch = applyTranspose(ch);
+  const tcl = applyTranspose(cl);
+  const tfh = applyTranspose(fh);
+  const tfl = applyTranspose(fl);
+
+  if (tch !== null && tcl !== null)
+    for (let m = Math.min(tch,tcl); m <= Math.max(tch,tcl); m++) mark(m, 'key-range-chest');
+  if (tfh !== null && tfl !== null)
+    for (let m = Math.min(tfh,tfl); m <= Math.max(tfh,tfl); m++) mark(m, 'key-range-falsetto');
+
+  mark(tch, 'key-chest-high');
+  mark(tcl, 'key-chest-low');
+  mark(tfh, 'key-falsetto-high');
+  mark(tfl, 'key-falsetto-low');
+}
 const PIANO_START = 45;  // A2
 const PIANO_END   = 115; // G7
 
@@ -1024,36 +1168,12 @@ function buildPiano() {
 }
 
 function updatePiano() {
-  for (let m = PIANO_START; m <= PIANO_END; m++) {
-    const el = document.getElementById('key-' + m);
-    if (!el) continue;
-    const s = ((m - 12) % 12 + 12) % 12;
-    const isBlack = [1,3,6,8,10].includes(s);
-    el.className = isBlack ? 'black-key' : 'white-key';
-  }
-
-  function mark(midi, cls) {
-    if (midi === null) return;
-    const el = document.getElementById('key-' + midi);
-    if (el) el.classList.add(cls);
-  }
-
-  const ch = getNoteMidi('chestHigh');
-  const cl = getNoteMidi('chestLow');
-  const fh = getNoteMidi('falsettoHigh');
-  const fl = getNoteMidi('falsettoLow');
-
-  if (ch !== null && cl !== null) {
-    for (let m = Math.min(ch,cl); m <= Math.max(ch,cl); m++) mark(m, 'key-range-chest');
-  }
-  if (fh !== null && fl !== null) {
-    for (let m = Math.min(fh,fl); m <= Math.max(fh,fl); m++) mark(m, 'key-range-falsetto');
-  }
-
-  mark(ch, 'key-chest-high');
-  mark(cl, 'key-chest-low');
-  mark(fh, 'key-falsetto-high');
-  mark(fl, 'key-falsetto-low');
+  drawPianoMidis(
+    getNoteMidi('chestHigh'),
+    getNoteMidi('chestLow'),
+    getNoteMidi('falsettoHigh'),
+    getNoteMidi('falsettoLow')
+  );
 }
 
 // ═══ Records ════════════════════════════════════════
@@ -1119,12 +1239,21 @@ function noteNameToMidi(name) {
 // 記録を鍵盤に反映
 let activeRecordId = null;
 
+function loadRecordToPianoMidis(r) {
+  drawPianoMidis(
+    noteNameToMidi(r.chestHigh),
+    noteNameToMidi(r.chestLow),
+    noteNameToMidi(r.falsettoHigh),
+    noteNameToMidi(r.falsettoLow)
+  );
+}
+
 function loadRecordToPiano(id) {
-  // 同じカードを再タップで解除
   if (activeRecordId === id) {
     activeRecordId = null;
     document.querySelectorAll('.record-card').forEach(c => c.classList.remove('active'));
-    updatePiano(); // フォームの現在値に戻す
+    document.getElementById('pianoLabel').textContent = '現在入力中';
+    updatePiano();
     return;
   }
   activeRecordId = id;
@@ -1134,42 +1263,10 @@ function loadRecordToPiano(id) {
   const r = records.find(rec => rec.id === id);
   if (!r) return;
 
-  const midis = {
-    chestHigh:    noteNameToMidi(r.chestHigh),
-    chestLow:     noteNameToMidi(r.chestLow),
-    falsettoHigh: noteNameToMidi(r.falsettoHigh),
-    falsettoLow:  noteNameToMidi(r.falsettoLow),
-  };
+  // ラベル更新
+  document.getElementById('pianoLabel').textContent = [r.singer, r.song].filter(Boolean).join(' / ');
 
-  // reset
-  for (let m = PIANO_START; m <= PIANO_END; m++) {
-    const el = document.getElementById('key-' + m);
-    if (!el) continue;
-    const s = ((m - 12) % 12 + 12) % 12;
-    const isBlack = [1,3,6,8,10].includes(s);
-    el.className = isBlack ? 'black-key' : 'white-key';
-  }
-
-  function mark(midi, cls) {
-    if (midi === null) return;
-    const el = document.getElementById('key-' + midi);
-    if (el) el.classList.add(cls);
-  }
-
-  const ch = midis.chestHigh, cl = midis.chestLow;
-  const fh = midis.falsettoHigh, fl = midis.falsettoLow;
-
-  if (ch !== null && cl !== null)
-    for (let m = Math.min(ch,cl); m <= Math.max(ch,cl); m++) mark(m, 'key-range-chest');
-  if (fh !== null && fl !== null)
-    for (let m = Math.min(fh,fl); m <= Math.max(fh,fl); m++) mark(m, 'key-range-falsetto');
-
-  mark(ch, 'key-chest-high');
-  mark(cl, 'key-chest-low');
-  mark(fh, 'key-falsetto-high');
-  mark(fl, 'key-falsetto-low');
-
-  // ピアノまでスクロール
+  loadRecordToPianoMidis(r);
   document.querySelector('.piano-section').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
