@@ -716,7 +716,7 @@
     to   { opacity: 1; transform: translateY(0); }
   }
   .record-name { font-size: 1.05rem; font-weight: 600; color: var(--text); margin-bottom: 3px; }
-  .record-song { font-size: 0.8rem; color: var(--muted); font-family: 'DM Mono', monospace; margin-bottom: 10px; }
+  .record-song { font-size: 0.88rem; color: var(--text); font-family: 'Shippori Mincho', serif; margin-bottom: 10px; font-weight: 600; letter-spacing: 0.05em; }
   .record-ranges { display: flex; flex-wrap: wrap; gap: 7px; }
   .range-badge {
     font-family: 'DM Mono', monospace;
@@ -2128,6 +2128,16 @@ function renderRecords() {
 buildSelects();
 buildEditSelects();
 buildPiano();
+// 初期スクロール位置をmid1F(MIDI 65)付近に設定
+(function() {
+  const scroll = document.querySelector('.piano-scroll');
+  const wp = window._whitePos;
+  if (!scroll || !wp) return;
+  // mid1F = MIDI 65 の白鍵インデックス × 22px、少し左余白を引く
+  const targetMidi = 65; // mid1F
+  const wi = wp[targetMidi];
+  if (wi !== undefined) scroll.scrollLeft = wi * 22 - 20;
+})();
 updatePiano();
 renderRecords();
 
